@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cocina - Pedidos Pendientes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .pedido-card {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-left: 5px solid #f59e0b; /* Amarillo */
+        }
+    </style>
+</head>
+<body class="bg-slate-800 text-white">
+
+    <div class="container mx-auto p-6">
+        <h1 class="text-4xl font-bold text-center mb-8">Pedidos Pendientes</h1>
+
+        <div id="lista-pedidos-cocina" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <!-- Los pedidos pendientes se cargarán aquí -->
+        </div>
+        <p id="sin-pedidos-cocina" class="text-center text-gray-400 mt-12 text-2xl">¡Todo al día! No hay pedidos pendientes.</p>
+    </div>
+
+    <script>
+        const listaPedidosEl = document.getElementById('lista-pedidos-cocina');
+        const sinPedidosMsg = document.getElementById('sin-pedidos-cocina');
+
+        const fetchPedidosCocina = async () => {
+            try {
+                const response = await fetch(`${window.location.origin}/api/pedidos/`);
+                const todosLosPedidos = await response.json();
+                // La cocina solo ve los pendientes
+                const pedidosPendientes = todosLosPedidos.filter(p => p.estado === 'PENDIENTE');
+                actualizarVistaCocina(pedidosPendientes);
+            } catch (error) {
+                console.error("Error al cargar pedidos para cocina:", error);
+            }
+        };
+
+        const actualizarVistaCocina = (pedidos) => {
+            listaPedidosEl.innerHTML = '';
+            
+            if(pedidos.length > 0) {
+                sinPedidosMsg.style.display = 'none';
+            } else {
+                sinPedidosMsg.style.display = 'block';
+            }
+
+            pedidos.forEach(pedido => {
+                const card = document.createElement('div');
+                card.className = 'pedido-card bg-slate-700 p-5 rounded-lg flex flex-col justify-between';
+                card.innerHTML = `
+                    <div>
+                        <h3 class="font-bold text-2xl text-yellow-300 mb-3">Pedido #${pedido.id}</h3>
+                        <p class="text-lg text-gray-200">${pedido.descripcion}</p>
+                    </div>
+                    <button onclick="marcarListo(${pedido.id})" class="mt-5 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-md transition">
+                        Marcar como Listo
+                    </button>
+                `;
+                listaPedidosEl.appendChild(card);
+            });
+        };
+        
+        window.marcarListo = async (id) => {
+            try {
+                await fetch(`${window.location.origin}/api/pedidos/marcar_listo/${id}/`, { method: 'POST' });
+                // Eliminar visualmente de forma inmediata para dar feedback rápido
+                const cardToRemove = document.querySelector(`.pedido-card button[onclick="marcarListo(${id})"]`).closest('.pedido-card');
+                if (cardToRemove) {
+                    cardToRemove.remove();
+                }
+                fetchPedidosCocina(); // Sincronizar con el servidor
+            } catch (error) {
+                console.error("Error al marcar como listo:", error);
+            }
+        };
+
+        // Iniciar polling
+        setInterval(fetchPedidosCocina, 3000); // Actualiza cada 3 segundos
+        fetchPedidosCocina(); // Carga inicial
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RED 24 Drugstore - Terminal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* --- ESTILOS PARA EL BANNER NEÓN --- */
+        .neon-banner {
+            background-color: #000;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        .neon-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem; /* Tamaño para pantallas grandes */
+            color: #fff;
+            animation: flicker 2s infinite alternate;
+            text-shadow:
+                0 0 7px #fff,
+                0 0 10px #fff,
+                0 0 21px #fff,
+                0 0 42px #e60000,
+                0 0 82px #e60000,
+                0 0 92px #e60000,
+                0 0 102px #e60000,
+                0 0 151px #e60000;
+        }
+
+        /* Animación de parpadeo sutil */
+        @keyframes flicker {
+            0%, 18%, 22%, 25%, 53%, 57%, 100% {
+                text-shadow:
+                    0 0 4px #fff,
+                    0 0 11px #fff,
+                    0 0 19px #fff,
+                    0 0 40px #e60000,
+                    0 0 80px #e60000,
+                    0 0 90px #e60000,
+                    0 0 100px #e60000,
+                    0 0 150px #e60000;
+            }
+            20%, 24%, 55% {
+                text-shadow: none;
+            }
+        }
+        
+        /* Ajuste para pantallas pequeñas */
+        @media (max-width: 640px) {
+            .neon-text {
+                font-size: 1.75rem;
+            }
+        }
+        /* --- FIN DE ESTILOS DEL BANNER --- */
+
+        #termino-busqueda:focus { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); }
+        .tab-btn.active { border-color: #3b82f6; color: #3b82f6; background-color: #eff6ff; }
+        .tab-content { display: none; } .tab-content.active { display: block; }
+        .pedido-card { transition: all 0.3s ease; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .pedido-pendiente { border-left: 5px solid #f59e0b; }
+        .pedido-listo { border-left: 5px solid #10b981; }
+        .highlight { animation: highlight-anim 1.5s ease-out; }
+        @keyframes highlight-anim {
+            0% { transform: scale(1); background-color: #d1fae5; }
+            50% { transform: scale(1.03); background-color: #a7f3d0; }
+            100% { transform: scale(1); background-color: white; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- BANNER NEÓN -->
+    <div class="neon-banner">
+        <h1 class="neon-text">RED 24 Drugstore</h1>
+    </div>
+
+    <!-- Contenedor Principal de la Aplicación -->
+    <div class="flex items-center justify-center p-4">
+        <div class="w-full max-w-6xl bg-white rounded-lg shadow-xl p-6">
+            <h1 class="text-3xl font-bold text-gray-800 mb-4">Terminal de Caja</h1>
+            <!-- Pestañas de Navegación -->
+            <div class="border-b border-gray-200 mb-6">
+                <nav class="flex space-x-4" aria-label="Tabs">
+                    <button id="tab-pos" class="tab-btn active font-semibold px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-600">Punto de Venta</button>
+                    <button id="tab-pedidos" class="tab-btn font-semibold px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-600">Pedidos a Cocina</button>
+                </nav>
+            </div>
+
+            <div>
+                <!-- Pestaña 1: Punto de Venta -->
+                <div id="content-pos" class="tab-content active">
+                    <div class="w-full max-w-4xl mx-auto">
+                        <!-- Campo de Búsqueda Universal con Desplegable -->
+                        <div class="mb-6 relative">
+                            <label for="termino-busqueda" class="block text-sm font-medium text-gray-700 mb-1">Buscar por Nombre o Código de Barras</label>
+                            <input type="text" id="termino-busqueda" placeholder="Buscar producto..." autocomplete="off" class="w-full p-3 border border-gray-300 rounded-md text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <!-- Contenedor para las sugerencias de búsqueda -->
+                            <div id="search-suggestions" class="absolute z-10 w-full bg-white border rounded-md mt-1 shadow-lg hidden"></div>
+                            <div id="mensaje-error-pos" class="text-red-600 mt-2 text-sm h-5"></div>
+                        </div>
+                        <!-- Lista de Productos en la Venta Actual -->
+                        <div class="mb-6">
+                            <h2 class="text-xl font-semibold text-gray-700 mb-2">Venta Actual</h2>
+                            <div class="bg-gray-50 rounded-md border" style="min-height: 200px;">
+                                <table class="w-full"><thead class="bg-gray-200"><tr><th class="p-2 text-left text-sm font-semibold text-gray-600">Producto</th><th class="p-2 text-center text-sm font-semibold text-gray-600">Cantidad</th><th class="p-2 text-right text-sm font-semibold text-gray-600">Precio</th><th class="p-2 text-right text-sm font-semibold text-gray-600">Subtotal</th><th class="p-2 text-center"></th></tr></thead><tbody id="lista-venta"></tbody></table>
+                                <p id="venta-vacia" class="text-center text-gray-500 p-8">Aún no se han agregado productos.</p>
+                            </div>
+                        </div>
+                        <!-- Total y Botones de Acción -->
+                        <div class="flex justify-between items-center">
+                            <div><button id="btn-cancelar" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-md transition duration-300">Cancelar Venta</button></div>
+                            <div class="text-right"><p class="text-gray-600 text-xl">Total</p><p id="total-venta" class="text-4xl font-bold text-gray-800">$0.00</p><button id="btn-finalizar" class="mt-2 w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Finalizar Venta</button></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Pestaña 2: Pedidos a Cocina -->
+                <div id="content-pedidos" class="tab-content">
+                    <div class="max-w-4xl mx-auto">
+                        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                            <h2 class="text-xl font-semibold text-gray-700 mb-4">Nuevo Pedido</h2>
+                            <div class="flex gap-4">
+                                <input type="text" id="descripcion-pedido" class="flex-grow p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Sándwich de milanesa, sin tomate">
+                                <button id="btn-enviar-cocina" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-md transition duration-300">Enviar a Cocina</button>
+                            </div>
+                            <p id="mensaje-error-pedidos" class="text-red-600 mt-2 text-sm h-5"></p>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Pedidos Activos</h2>
+                            <div id="lista-pedidos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                            <p id="sin-pedidos" class="text-center text-gray-500 mt-8">No hay pedidos activos.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <audio id="notification-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" preload="auto"></audio>
+
+    <script>
+        // --- El resto del script es el mismo y se mantiene aquí ---
+        // (El código JS completo que ya funcionaba va aquí sin cambios)
+        const tabPos = document.getElementById('tab-pos');
+        const tabPedidos = document.getElementById('tab-pedidos');
+        const contentPos = document.getElementById('content-pos');
+        const contentPedidos = document.getElementById('content-pedidos');
+        tabPos.addEventListener('click', () => { contentPos.classList.add('active'); contentPedidos.classList.remove('active'); tabPos.classList.add('active'); tabPedidos.classList.remove('active'); });
+        tabPedidos.addEventListener('click', () => { contentPedidos.classList.add('active'); contentPos.classList.remove('active'); tabPedidos.classList.add('active'); tabPos.classList.remove('active'); fetchPedidos(); });
+        const inputBusqueda = document.getElementById('termino-busqueda');
+        const suggestionsEl = document.getElementById('search-suggestions');
+        let debounceTimeout;
+        inputBusqueda.addEventListener('input', () => { clearTimeout(debounceTimeout); const termino = inputBusqueda.value.trim(); if (termino.length < 2) { suggestionsEl.classList.add('hidden'); return; } debounceTimeout = setTimeout(() => { realizarBusqueda(termino); }, 300); });
+        document.addEventListener('click', (e) => { if (!inputBusqueda.contains(e.target)) { suggestionsEl.classList.add('hidden'); } });
+        async function realizarBusqueda(termino) { mensajeErrorPosEl.textContent = ''; try { const response = await fetch(`${window.location.origin}/api/buscar_productos/?q=${encodeURIComponent(termino)}`); const resultados = await response.json(); if (resultados.length === 1 && resultados[0].codigo_barras === termino) { agregarProductoAVenta(resultados[0]); limpiarBusqueda(); } else if (resultados.length > 0) { mostrarSugerencias(resultados); } else { suggestionsEl.classList.add('hidden'); } } catch (error) { console.error('Error en búsqueda:', error); mensajeErrorPosEl.textContent = 'Error al buscar el producto.'; setTimeout(() => mensajeErrorPosEl.textContent = '', 3000); } }
+        function mostrarSugerencias(resultados) { suggestionsEl.innerHTML = ''; if (resultados.length === 0) { suggestionsEl.classList.add('hidden'); return; } resultados.forEach(producto => { const item = document.createElement('div'); item.className = 'p-3 hover:bg-gray-100 cursor-pointer border-b flex justify-between items-center'; item.innerHTML = `<span>${producto.nombre}</span><span class="font-semibold text-gray-800">$${parseFloat(producto.precio).toFixed(2)}</span>`; item.addEventListener('mousedown', () => { agregarProductoAVenta(producto); limpiarBusqueda(); }); suggestionsEl.appendChild(item); }); suggestionsEl.classList.remove('hidden'); }
+        function limpiarBusqueda() { inputBusqueda.value = ''; suggestionsEl.classList.add('hidden'); inputBusqueda.focus(); }
+        const listaVentaEl = document.getElementById('lista-venta');
+        const totalVentaEl = document.getElementById('total-venta');
+        const mensajeErrorPosEl = document.getElementById('mensaje-error-pos');
+        const btnFinalizar = document.getElementById('btn-finalizar');
+        const btnCancelar = document.getElementById('btn-cancelar');
+        const ventaVaciaMsg = document.getElementById('venta-vacia');
+        let ventaActual = [];
+        document.addEventListener('DOMContentLoaded', () => { inputBusqueda.focus(); });
+        btnCancelar.addEventListener('click', limpiarVenta);
+        btnFinalizar.addEventListener('click', finalizarVenta);
+        function agregarProductoAVenta(producto) { const prodExistente = ventaActual.find(item => item.id === producto.id); if (prodExistente) { prodExistente.cantidad++; } else { ventaActual.push({ ...producto, cantidad: 1 }); } actualizarVistaVenta(); }
+        function actualizarVistaVenta() { listaVentaEl.innerHTML = ''; let total = 0; if (ventaActual.length > 0) { ventaVaciaMsg.style.display = 'none'; btnFinalizar.disabled = false; } else { ventaVaciaMsg.style.display = 'block'; btnFinalizar.disabled = true; } ventaActual.forEach((item, index) => { const subtotal = item.precio * item.cantidad; total += subtotal; const fila = document.createElement('tr'); fila.className = 'border-b'; fila.innerHTML = `<td class="p-2 font-medium">${item.nombre}</td><td class="p-2 text-center">${item.cantidad}</td><td class="p-2 text-right">$${parseFloat(item.precio).toFixed(2)}</td><td class="p-2 text-right font-semibold">$${subtotal.toFixed(2)}</td><td class="p-2 text-center"><button onclick="eliminarItem(${index})" class="text-red-500 hover:text-red-700">&times;</button></td>`; listaVentaEl.appendChild(fila); }); totalVentaEl.textContent = `$${total.toFixed(2)}`; }
+        window.eliminarItem = (index) => { ventaActual.splice(index, 1); actualizarVistaVenta(); };
+        function limpiarVenta() { ventaActual = []; actualizarVistaVenta(); mensajeErrorPosEl.textContent = ''; limpiarBusqueda(); }
+        async function finalizarVenta() { if (ventaActual.length === 0) return; btnFinalizar.disabled = true; btnFinalizar.textContent = 'Procesando...'; try { const response = await fetch(`${window.location.origin}/api/registrar_venta/`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: ventaActual.map(item => ({ id: item.id, cantidad: item.cantidad })) }) }); if (!response.ok) { const err = await response.json(); throw new Error(err.error); } const result = await response.json(); alert(`Venta #${result.venta_id} registrada con éxito!`); limpiarVenta(); } catch (error) { mensajeErrorPosEl.textContent = error.message; } finally { btnFinalizar.disabled = false; btnFinalizar.textContent = 'Finalizar Venta'; } }
+        const inputDescripcion = document.getElementById('descripcion-pedido');
+        const btnEnviar = document.getElementById('btn-enviar-cocina');
+        const listaPedidosEl = document.getElementById('lista-pedidos');
+        const mensajeErrorPedidosEl = document.getElementById('mensaje-error-pedidos');
+        const sinPedidosMsg = document.getElementById('sin-pedidos');
+        const notificationSound = document.getElementById('notification-sound');
+        const fetchPedidos = async () => { try { const response = await fetch(`${window.location.origin}/api/pedidos/`); const pedidos = await response.json(); actualizarVistaPedidos(pedidos); } catch (error) { console.error("Error al cargar pedidos:", error); } };
+        const actualizarVistaPedidos = (pedidos) => { listaPedidosEl.innerHTML = ''; sinPedidosMsg.style.display = pedidos.length > 0 ? 'none' : 'block'; pedidos.forEach(pedido => { const card = document.createElement('div'); card.id = `pedido-${pedido.id}`; card.className = 'pedido-card bg-white p-4 rounded-lg flex flex-col justify-between'; card.classList.add(pedido.estado === 'PENDIENTE' ? 'pedido-pendiente' : 'pedido-listo'); const isNewAndReady = pedido.estado === 'LISTO' && !pedido.notificado_caja; card.innerHTML = `<div><div class="flex justify-between items-center mb-2"><h3 class="font-bold text-lg text-gray-800">Pedido #${pedido.id}</h3><span class="px-3 py-1 text-sm font-semibold rounded-full ${pedido.estado === 'PENDIENTE' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}">${pedido.estado === 'PENDIENTE' ? 'Pendiente' : 'Listo para retirar'}</span></div><p class="text-gray-600">${pedido.descripcion}</p></div>${pedido.estado === 'LISTO' ? `<button onclick="marcarEntregado(${pedido.id})" class="mt-4 w-full bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-md transition">Marcar como Entregado</button>` : '<div class="mt-4 h-10"></div>'}`; listaPedidosEl.appendChild(card); if (isNewAndReady) { card.classList.add('highlight'); notificationSound.play(); marcarNotificado(pedido.id); } }); };
+        btnEnviar.addEventListener('click', async () => { const descripcion = inputDescripcion.value.trim(); if (!descripcion) { mensajeErrorPedidosEl.textContent = 'La descripción no puede estar vacía.'; setTimeout(() => mensajeErrorPedidosEl.textContent = '', 3000); return; } try { await fetch(`${window.location.origin}/api/pedidos/crear/`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ descripcion }) }); inputDescripcion.value = ''; fetchPedidos(); } catch (error) { mensajeErrorPedidosEl.textContent = 'Error al crear el pedido.'; } });
+        window.marcarEntregado = async (id) => { try { await fetch(`${window.location.origin}/api/pedidos/marcar_entregado/${id}/`, { method: 'POST' }); fetchPedidos(); } catch (error) { console.error("Error al marcar como entregado:", error); } };
+        window.marcarNotificado = async (id) => { try { await fetch(`${window.location.origin}/api/pedidos/marcar_notificado/${id}/`, { method: 'POST' }); } catch (error) { console.error("Error al marcar como notificado:", error); } };
+        setInterval(() => { if (contentPedidos.classList.contains('active')) { fetchPedidos(); } }, 3000);
+    </script>
+</body>
+</html>
+

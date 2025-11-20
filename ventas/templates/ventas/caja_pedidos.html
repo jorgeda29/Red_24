@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caja - Pedidos a Cocina</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .pedido-card {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .pedido-pendiente { border-left: 5px solid #f59e0b; } /* Amarillo */
+        .pedido-listo { border-left: 5px solid #10b981; } /* Verde */
+        .highlight {
+            animation: highlight-anim 1.5s ease-out;
+        }
+        @keyframes highlight-anim {
+            0% { transform: scale(1); background-color: #d1fae5; }
+            50% { transform: scale(1.03); background-color: #a7f3d0; }
+            100% { transform: scale(1); background-color: white; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div class="container mx-auto p-6 max-w-4xl">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Pedidos a Cocina</h1>
+
+        <!-- Formulario para crear nuevo pedido -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Nuevo Pedido</h2>
+            <div class="flex gap-4">
+                <input type="text" id="descripcion-pedido" class="flex-grow p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Sándwich de milanesa, sin tomate">
+                <button id="btn-enviar-cocina" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-md transition duration-300">
+                    Enviar a Cocina
+                </button>
+            </div>
+            <p id="mensaje-error" class="text-red-600 mt-2 text-sm h-5"></p>
+        </div>
+
+        <!-- Lista de pedidos -->
+        <div>
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Pedidos Activos</h2>
+            <div id="lista-pedidos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Los pedidos se cargarán aquí dinámicamente -->
+            </div>
+             <p id="sin-pedidos" class="text-center text-gray-500 mt-8">No hay pedidos activos.</p>
+        </div>
+    </div>
+    
+    <audio id="notification-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" preload="auto"></audio>
+
+    <script>
+        const inputDescripcion = document.getElementById('descripcion-pedido');
+        const btnEnviar = document.getElementById('btn-enviar-cocina');
+        const listaPedidosEl = document.getElementById('lista-pedidos');
+        const mensajeErrorEl = document.getElementById('mensaje-error');
+        const sinPedidosMsg = document.getElementById('sin-pedidos');
+        const notificationSound = document.getElementById('notification-sound');
+
+        const fetchPedidos = async () => {
+            try {
+                const response = await fetch(`${window.location.origin}/api/pedidos/`);
+                const pedidos = await response.json();
+                actualizarVistaPedidos(pedidos);
+            } catch (error) {
+                console.error("Error al cargar pedidos:", error);
+            }
+        };
+
+        const actualizarVistaPedidos = (pedidos) => {
+            listaPedidosEl.innerHTML = '';
+            
+            if(pedidos.length > 0) {
+                sinPedidosMsg.style.display = 'none';
+            } else {
+                sinPedidosMsg.style.display = 'block';
+            }
+
+            pedidos.forEach(pedido => {
+                const card = document.createElement('div');
+                card.id = `pedido-${pedido.id}`;
+                card.className = 'pedido-card bg-white p-4 rounded-lg flex flex-col justify-between';
+                card.classList.add(pedido.estado === 'PENDIENTE' ? 'pedido-pendiente' : 'pedido-listo');
+
+                const isNewAndReady = pedido.estado === 'LISTO' && !pedido.notificado_caja;
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <h3 class="font-bold text-lg text-gray-800">Pedido #${pedido.id}</h3>
+                            <span class="px-3 py-1 text-sm font-semibold rounded-full ${pedido.estado === 'PENDIENTE' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}">
+                                ${pedido.estado === 'PENDiente' ? 'Pendiente' : 'Listo para retirar'}
+                            </span>
+                        </div>
+                        <p class="text-gray-600">${pedido.descripcion}</p>
+                    </div>
+                    ${pedido.estado === 'LISTO' ? 
+                    `<button onclick="marcarEntregado(${pedido.id})" class="mt-4 w-full bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-md transition">
+                        Marcar como Entregado
+                    </button>` : 
+                    '<div class="mt-4 h-10"></div>' // Espaciador para alinear tarjetas
+                    }
+                `;
+                listaPedidosEl.appendChild(card);
+
+                if (isNewAndReady) {
+                    card.classList.add('highlight');
+                    notificationSound.play();
+                    marcarNotificado(pedido.id);
+                }
+            });
+        };
+
+        btnEnviar.addEventListener('click', async () => {
+            const descripcion = inputDescripcion.value.trim();
+            if (!descripcion) {
+                mensajeErrorEl.textContent = 'La descripción no puede estar vacía.';
+                setTimeout(() => mensajeErrorEl.textContent = '', 3000);
+                return;
+            }
+
+            try {
+                await fetch(`${window.location.origin}/api/pedidos/crear/`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ descripcion })
+                });
+                inputDescripcion.value = '';
+                fetchPedidos();
+            } catch (error) {
+                mensajeErrorEl.textContent = 'Error al crear el pedido.';
+            }
+        });
+        
+        window.marcarEntregado = async (id) => {
+             try {
+                await fetch(`${window.location.origin}/api/pedidos/marcar_entregado/${id}/`, { method: 'POST' });
+                fetchPedidos();
+            } catch (error) {
+                console.error("Error al marcar como entregado:", error);
+            }
+        };
+
+        window.marcarNotificado = async (id) => {
+            try {
+                await fetch(`${window.location.origin}/api/pedidos/marcar_notificado/${id}/`, { method: 'POST' });
+            } catch (error) {
+                console.error("Error al marcar como notificado:", error);
+            }
+        };
+
+        // Iniciar polling
+        setInterval(fetchPedidos, 3000); // Actualiza cada 3 segundos
+        fetchPedidos(); // Carga inicial
+    </script>
+</body>
+</html>
+
